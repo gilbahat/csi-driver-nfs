@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
 )
 
@@ -151,15 +150,13 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 	}
 
 	klog.V(2).Infof("NodePublishVolume: volumeID(%v) source(%s) targetPath(%s) mountflags(%v)", volumeID, source, targetPath, mountOptions)
-	execFunc := func() error {
-		return ns.mounter.Mount(source, targetPath, "nfs", mountOptions)
-	}
-	timeoutFunc := func() error {
-		return fmt.Errorf("mount volume %s to %s timeout after %ds", source, targetPath, mountTimeoutInSec)
-	}
-	if err := WaitUntilTimeout(mountTimeoutInSec*time.Second, execFunc, timeoutFunc); err != nil {
+	if err := mountNFSWithTimeout(ns.mounter, source, targetPath, mountOptions, mountTimeoutInSec*time.Second); err != nil {
 		if os.IsPermission(err) {
 			return nil, status.Error(codes.PermissionDenied, err.Error())
+		}
+		var badRequest interface{ InvalidArgument() bool }
+		if errors.As(err, &badRequest) && badRequest.InvalidArgument() {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 		if strings.Contains(err.Error(), "invalid argument") {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -254,7 +251,7 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 		return nil, status.Errorf(codes.Internal, "failed to stat file %s: %v", req.VolumePath, err)
 	}
 
-	volumeMetrics, err := volume.NewMetricsStatFS(req.VolumePath).GetMetrics()
+	volumeMetrics, err := getVolumeMetrics(req.VolumePath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get metrics: %v", err)
 	}

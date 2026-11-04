@@ -66,6 +66,7 @@ func handle() {
 		RemoveArchivedVolumePath:     *removeArchivedVolumePath,
 		UseTarCommandInSnapshot:      *useTarCommandInSnapshot,
 		EnableSnapshotCompression:    *enableSnapshotCompression,
+		Platform:                     platformOptions(),
 	}
 	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)
