@@ -1,5 +1,5 @@
-//go:build !linux
-// +build !linux
+//go:build !linux && !aix
+// +build !linux,!aix
 
 /*
 Copyright 2026 The Kubernetes Authors.

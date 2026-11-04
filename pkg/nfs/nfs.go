@@ -17,7 +17,6 @@ limitations under the License.
 package nfs
 
 import (
-	"runtime"
 	"strings"
 	"time"
 
@@ -41,6 +40,8 @@ type DriverOptions struct {
 	MaxSnapshotArchiveSize       int64
 	MaxSnapshotFileSize          int64
 	MaxSnapshotFiles             int64
+	// Platform holds options used only on some node platforms (AIX).
+	Platform PlatformOptions
 }
 
 type Driver struct {
@@ -57,6 +58,7 @@ type Driver struct {
 	maxSnapshotArchiveSize    int64
 	maxSnapshotFileSize       int64
 	maxSnapshotFiles          int64
+	platform                  PlatformOptions
 
 	//ids *identityServer
 	ns          *NodeServer
@@ -115,6 +117,7 @@ func NewDriver(options *DriverOptions) *Driver {
 		maxSnapshotFileSize:          options.MaxSnapshotFileSize,
 		maxSnapshotFiles:             options.MaxSnapshotFiles,
 		defaultOnDeletePolicy:        options.DefaultOnDeletePolicy,
+		platform:                     options.Platform,
 	}
 
 	n.AddControllerServiceCapabilities([]csi.ControllerServiceCapability_RPC_Type{
@@ -169,12 +172,7 @@ func (n *Driver) Run(testMode bool) {
 	}
 	klog.V(2).Infof("\nDRIVER INFORMATION:\n-------------------\n%s\n\nStreaming logs below:", versionMeta)
 
-	mounter := mount.New("")
-	if runtime.GOOS == "linux" {
-		// MounterForceUnmounter is only implemented on Linux now
-		mounter = mounter.(mount.MounterForceUnmounter)
-	}
-	n.ns = NewNodeServer(n, mounter)
+	n.ns = NewNodeServer(n, newNodeMounter(n))
 	s := NewNonBlockingGRPCServer()
 	s.Start(n.endpoint,
 		NewDefaultIdentityServer(n),
@@ -183,6 +181,9 @@ func (n *Driver) Run(testMode bool) {
 		NewControllerServer(n),
 		n.ns,
 		testMode)
+	if !testMode {
+		startPlatformServices(n)
+	}
 	s.Wait()
 }
 

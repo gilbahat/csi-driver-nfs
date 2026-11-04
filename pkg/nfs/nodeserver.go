@@ -30,7 +30,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"k8s.io/klog/v2"
-	"k8s.io/kubernetes/pkg/volume"
 	mount "k8s.io/mount-utils"
 )
 
@@ -178,6 +177,10 @@ func (ns *NodeServer) NodePublishVolume(_ context.Context, req *csi.NodePublishV
 		if os.IsPermission(err) {
 			return nil, status.Error(codes.PermissionDenied, err.Error())
 		}
+		var badRequest interface{ InvalidArgument() bool }
+		if errors.As(err, &badRequest) && badRequest.InvalidArgument() {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
 		if strings.Contains(err.Error(), "invalid argument") {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -297,7 +300,7 @@ func (ns *NodeServer) NodeGetVolumeStats(_ context.Context, req *csi.NodeGetVolu
 		return nil, status.Errorf(codes.Internal, "failed to stat file %s: %v", req.VolumePath, err)
 	}
 
-	volumeMetrics, err := volume.NewMetricsStatFS(req.VolumePath).GetMetrics()
+	volumeMetrics, err := getVolumeMetrics(req.VolumePath)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get metrics: %v", err)
 	}

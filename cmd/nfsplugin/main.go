@@ -72,6 +72,7 @@ func handle() {
 		MaxSnapshotArchiveSize:       *maxSnapshotArchiveSize,
 		MaxSnapshotFileSize:          *maxSnapshotFileSize,
 		MaxSnapshotFiles:             *maxSnapshotFiles,
+		Platform:                     platformOptions(),
 	}
 	d := nfs.NewDriver(&driverOptions)
 	d.Run(false)

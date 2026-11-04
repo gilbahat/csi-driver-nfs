@@ -23,8 +23,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestTarUnpackRejectsSymlinkArchive(t *testing.T) {
@@ -46,7 +47,7 @@ func TestTarUnpackRejectsSymlinkArchive(t *testing.T) {
 func TestTarUnpackRejectsFIFOArchive(t *testing.T) {
 	dir := t.TempDir()
 	archive := filepath.Join(dir, "snap.tar")
-	if err := syscall.Mkfifo(archive, 0o644); err != nil {
+	if err := unix.Mkfifo(archive, 0o644); err != nil {
 		t.Skipf("cannot create FIFO in test tmpdir: %v", err)
 	}
 	err := TarUnpack(archive, t.TempDir(), false, TarLimits{MaxArchiveSize: 1 << 20})
@@ -77,7 +78,7 @@ func TestTarUnpackRejectsFIFOArchive(t *testing.T) {
 func TestTarUnpackRejectsFIFOArchiveWithoutMaxArchiveSize(t *testing.T) {
 	dir := t.TempDir()
 	archive := filepath.Join(dir, "snap.tar")
-	if err := syscall.Mkfifo(archive, 0o644); err != nil {
+	if err := unix.Mkfifo(archive, 0o644); err != nil {
 		t.Skipf("cannot create FIFO in test tmpdir: %v", err)
 	}
 	err := TarUnpack(archive, t.TempDir(), false, TarLimits{MaxFileSize: 1 << 20, MaxFiles: 100})
@@ -100,7 +101,7 @@ func TestTarUnpackRejectsFIFOArchiveWithoutMaxArchiveSize(t *testing.T) {
 // restore time.
 func TestTarPackRejectsFIFOSource(t *testing.T) {
 	src := t.TempDir()
-	if err := syscall.Mkfifo(filepath.Join(src, "weird"), 0o644); err != nil {
+	if err := unix.Mkfifo(filepath.Join(src, "weird"), 0o644); err != nil {
 		t.Skipf("cannot create FIFO in test tmpdir: %v", err)
 	}
 	archive := filepath.Join(t.TempDir(), "snap.tar")
