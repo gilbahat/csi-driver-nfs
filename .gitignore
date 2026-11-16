@@ -71,3 +71,5 @@ cscope.*
 *.pyc
 profile.cov
 nfsplugin
+# The pattern above is for the binary; keep the command's sources tracked.
+!/cmd/nfsplugin/
